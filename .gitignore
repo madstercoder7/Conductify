@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment folders
+.conductify/
+conductify/
+env/
+
+# IDE/editor folders
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and runtime files
+*.log
+*.pid
+*.seed
+*.out
+
+# Spotipy cache (OAuth tokens)
+.cache/
+.cache-*  # Sometimes named like .cache-spotipy
+
+# Media files (optional if large)
+*.mp3
+*.wav
+*.mp4
+*.m4a
+
+# Trained model files (optional)
+*.pkl
+*.h5
+*.joblib
+models/
+checkpoints/
+
+# PyInstaller or packaging
+dist/
+build/
+*.spec
