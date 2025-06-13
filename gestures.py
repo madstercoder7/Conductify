@@ -1,6 +1,6 @@
 import cv2
 import mediapipe as mp
-import pygame
+import time
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
@@ -19,9 +19,12 @@ def count_fingers(hand_landmarks):
          
     return finger_count
 
-def start_gesture_loop(status_callback):
+def start_gesture_loop(status_callback, player):
     cap = cv2.VideoCapture(0)
     with mp_hands.Hands(max_num_hands=1, min_detection_confidence=0.7) as hands:
+        prev_y = None
+        last_volume_change = time.time()
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
@@ -39,12 +42,37 @@ def start_gesture_loop(status_callback):
 
                     # Play
                     if fingers == 5:
-                        pygame.mixer.music.unpause()
+                        player.resume()
                         status_callback("Play (Gesture)")
                     # Pause
                     elif fingers == 0:
-                        pygame.mixer.music.pause()
+                        player.pause()
                         status_callback("Pause (Gesture)")
+                    # Volume Control
+                    elif fingers == 2:
+                        index_y = hand_landmarks.landmark[8].y
+                        current_time = time.time()
+
+                        if prev_y is not None and current_time - last_volume_change > 0.5:
+                            dy = prev_y - index_y
+                            current_volume = player.get_volume()
+
+                            if dy > 0.05:
+                                # Volume Up
+                                new_volume = min(current_volume + 0.1, 1.0)
+                                player.set_volume(new_volume)
+                                status_callback(f"Volume up: {int(new_volume * 100)}%")
+                                last_volume_change = current_time
+                            elif dy < -0.05:
+                                # Volume DOwn
+                                new_volume = max(current_volume - 0.1, 0.0)
+                                player.set_volume(new_volume)
+                                status_callback(f"Volume Down: {int(new_volume * 100)}%")
+                                last_volume_change = current_time
+
+                        prev_y = index_y
+                    else:
+                        prev_y = None
 
             cv2.imshow("Conductify - Gesture Control", frame)
 
