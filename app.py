@@ -51,6 +51,11 @@ class ConductifyGUI:
         self.status_label = tk.Label(master, text="", fg="white", bg="#1e1e1e", font=("Helvetica", 12))
         self.status_label.pack(pady=20)
 
+        self.progress_canvas = tk.Canvas(master, width=300, height=20, bg="#333333", highlightthickness=0)
+        self.progress_canvas.pack(pady=10)
+        self.progress_canvas.bind("<Button-1>", self.seek_music)
+        self.progress_bar = self.progress_canvas.create_rectangle(0, 0, 0, 20, fill="#1DB954")
+
         # Progress Bar
         self.progress_label = tk.Label(master, text="00:00 / 00:00", fg="white", bg="#1e1e1e", font=("Helvetica", 10))
         self.progress_label.pack(pady=5)
@@ -81,6 +86,10 @@ class ConductifyGUI:
                 now = time.time()
                 elapsed = now - self.last_update_time
                 self.current_play_time += elapsed
+                progress_width = 300
+                progress_ratio = min(self.current_play_time / self.total_duration, 1.0) if self.total_duration > 0 else 0
+                bar_length = int(progress_width * progress_ratio)
+                self.progress_canvas.coords(self.progress_bar, 0, 0, bar_length, 20)
                 self.last_update_time = now
 
             current_time_str = time.strftime('%M:%S', time.gmtime(self.current_play_time))
@@ -94,6 +103,18 @@ class ConductifyGUI:
             self.progress_label.config(text="00:00 / 00:00")
             
         self.master.after(1000, self.update_progress)
+
+    def seek_music(self, event):
+        if self.player.music_file and self.total_duration > 0:
+            click_x = event.x
+            canvas_width = self.progress_canvas.winfo_width()
+            seek_ratio = click_x / canvas_width
+            seek_time = seek_ratio * self.total_duration
+
+            self.player.play(start=seek_time)
+
+            self.current_play_time = seek_time
+            self.status_label.config(text=f"Seeked to {int(seek_time)}s")
 
     def play_music(self):
         self.player.play()

@@ -11,9 +11,9 @@ class MusicPlayer:
         self.music_file = file_path
         pygame.mixer.music.load(file_path)
 
-    def play(self):
+    def play(self, start=0.0):
         if self.music_file:
-            pygame.mixer.music.play()
+            pygame.mixer.music.play(start=start)
 
     def pause(self):
         pygame.mixer.music.pause()
