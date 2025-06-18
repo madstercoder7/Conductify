@@ -14,6 +14,7 @@ class MusicPlayer:
         self.volume = 0.5   # Initializing the initial volume
         self.is_playing = False # Initializing whether track is playing
         self.is_paused = False # Initializing whether track is paused
+        self.music_file = None
 
     def load_playlist(self, file_paths):
         # Load multiple files as a playlist
@@ -27,23 +28,29 @@ class MusicPlayer:
         return False
     
     def load_track(self, index):
-        # Loading a track to the application
-        if 0 <= index < len(self.playlist): # Checking if the track exists in the index given
-            self.current_track_index = index # If does then assigns it to current track index
-            track = self.playlist[self.current_track_index] # Assings the path of the track to the variable
+        if 0 <= index < len(self.playlist):
+            self.current_track_index = index
+            track = self.playlist[self.current_track_index]
+            self.music_file = track
             try:
-                pygame.mixer.music.load(track) # Load the track to the app using pygame mixer
-                pygame.mixer.music.set_volume(self.volume) # Set volume to predefined volume
+                pygame.mixer.music.load(track)
+                pygame.mixer.music.set_volume(self.volume)
+                return True  # ✅ Return True on success
             except pygame.error as e:
                 print(f"Error loading track: {e}")
         return False
+
+
+    def load(self, file_path):
+        return self.load_playlist(file_path)
     
     def play(self):
-        # Play current track
-        if self.playlist: # Check if playlist exists
-            pygame.mixer.music.play() # Play the track using pygame mixer
-            self.is_playing = True 
+        if self.playlist:
+            pygame.mixer.music.play()
+            self.is_playing = True
             self.is_paused = False
+            return True
+
 
     def pause(self):
         # Pause current track
@@ -105,8 +112,8 @@ class MusicPlayer:
             return None
         track = self.playlist[self.current_track_index]
         return {
-            'name': os.path.basename(track),
-            'path': track,
-            'index': self.current_track_index,
-            'total': len(self.playlist)
+            'name': os.path.basename(track), # Track Name
+            'path': track, # Track address
+            'index': self.current_track_index, # Track index in playlist
+            'total': len(self.playlist) # Playlist length
         }
