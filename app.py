@@ -338,7 +338,9 @@ class ConductifyGUI:
                 position_ratio = click_x / bar_width
                 seek_time = position_ratio * self.total_duration
                 self.current_play_time = seek_time
-                # Note: pygame doesn't support seeking, so this is a placeholder
+                if self.is_playing:
+                    self.player.stop()
+                    self.player.play()
                 self.status_update(f"Seek to {self.format_time(seek_time)}")
     
     def toggle_gesture_control(self):

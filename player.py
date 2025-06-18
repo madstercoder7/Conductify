@@ -2,6 +2,9 @@ import pygame
 import os
 import random
 from pathlib import Path
+from pydub import AudioSegment
+from pydub.playback import play
+import threading
 
 class MusicPlayer:
     def __init__(self):
@@ -15,6 +18,8 @@ class MusicPlayer:
         self.shuffle_mode = False
         self.repeat_mode = False
         self.tempo_multiplier = 1.0
+        self.audio_segment = None
+        self.play_thread = None
         pygame.mixer.music.set_volume(self.volume)
 
     def load(self, file_path):
@@ -25,12 +30,12 @@ class MusicPlayer:
         try:
             pygame.mixer.music.load(file_path)
             return True
-        except pygame.error as e:
+        except Exception as e:
             print(f"Error loading file: {e}")
             return False
 
     def load_playlist(self, file_paths):
-        '''Load multiple files as a playilist'''
+        '''Load multiple files as a playlist'''
         self.playlist = [path for path in file_paths if self.is_audio_file(path)]
         if self.playlist:
             self.current_track_index = 0
@@ -38,7 +43,7 @@ class MusicPlayer:
             return self.load(self.music_file) 
         return False
     
-    def load_playlist(self, folder_path):
+    def load_folder(self, folder_path):
         '''Load all audio files from a folder'''
         audio_extensions = {'.mp3', '.wav', '.ogg', '.m4a'}
         folder = Path(folder_path)
@@ -65,16 +70,23 @@ class MusicPlayer:
         if self.music_file:
             try:
                 if not self.is_paused:
-                    pygame.mixer.music.play(start=int(start))
+                    if self.play_thread:
+                        self.stop()
+                    self.play_thread = threading.Thread(target=self._play_audio, daemon=True)
+                    self.play_thread.start()
                 else:
                     pygame.mixer.music.unpause()
                     self.is_paused = False
                 self.is_playing = True
                 return True
-            except pygame.error as e:
+            except Exception as e:
                 print(f"Error playing file: {e}")
                 return False
         return False
+
+    def _play_audio(self):
+        '''Play audio using pydub'''
+        play(self.audio_segment)
 
     def pause(self):
         '''Pause playback'''
@@ -92,18 +104,21 @@ class MusicPlayer:
         elif not self.is_playing and self.music_file:
             self.play()
 
+    def toggle_pause(self):
+        '''Toggle between pause and resume'''
+        if self.is_paused:
+            pygame.mixer.music.unpause()
+            self.is_paused = False
+        else:
+            pygame.mixer.music.pause()
+            self.is_paused = True
+
     def stop(self):
         '''Stop playback'''
         pygame.mixer.music.stop()
         self.is_paused = False
         self.is_playing = False
-
-    def toggle_pause(self):
-        '''Toggle between pause and resume'''
-        if self.is_playing:
-            self.pause()
-        else:
-            self.resume()
+        self.play_thread = None
 
     def next_track(self):
         '''Play next track in playlist'''
@@ -143,6 +158,8 @@ class MusicPlayer:
         '''Set volume'''
         self.volume = max(0.0, min(volume, 1.0))
         pygame.mixer.music.set_volume(self.volume)
+        if self.audio_segment:
+            self.audio_segment = self.audio_segment - (self.audio_segment.dBFS - (self.volume * 20 - 20))
 
     def get_volume(self):
         '''Get current volume'''
@@ -157,12 +174,15 @@ class MusicPlayer:
         self.set_volume(self.volume - decrement)
 
     def set_tempo(self, multiplier):
-        '''Set tempo #IP'''
+        '''Set tempo'''
         self.tempo_multiplier = max(0.5, min(multiplier, 2.0))
-        #IP
+        if self.audio_segment:
+            self.audio_segment = self.audio_segment._spawn(self.audio_segment.raw_data, overrides={
+                "frame_rate": int(self.audio_segment.frame_rate * self.tempo_multiplier)
+            })
 
     def get_tempo(self):
-        '''get current tempo'''
+        '''Get current tempo'''
         return self.tempo_multiplier
     
     def toggle_shuffle(self):
@@ -199,7 +219,7 @@ class MusicPlayer:
         return None
     
     def get_playlist_info(self):
-        '''get playlist info'''
+        '''Get playlist info'''
         return {
             'tracks': [os.path.basename(track) for track in self.playlist],
             'current_index': self.current_track_index,
@@ -234,9 +254,7 @@ class MusicPlayer:
         else:
             return self.previous_track()
         
-
 if __name__ == "__main__":
     player = MusicPlayer()
-
     print("Enhanced Music Player initialized")
     print("Features: Playlist support, gesture controls, volume/tempo control")

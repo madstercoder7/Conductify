@@ -46,17 +46,17 @@ class GestureAnalyzer:
     def detect_swipe_up(self, threshold=0.3):
         '''Detect upward swipe for crescendo'''
         vx, vy = self.get_average_velocity()
-        return vy < threshold and abs(vx) < abs(vy) * 0.5
+        return vy < -threshold and abs(vx) < abs(vy) * 0.5
     
     def detect_swipe_down(self, threshold=0.3):
         '''Detect downward swipe for diminuendo'''
         vx, vy = self.get_average_velocity()
-        return vy > threshold and abs(vx) > abs(vy) * 0.5
+        return vy > threshold and abs(vx) < abs(vy) * 0.5
     
     def detect_swipe_left(self, threshold=0.3):
         '''Detect left swipe for previous track'''
         vx, vy = self.get_average_velocity()
-        return vx < threshold and abs(vy) < abs(vx) * 0.5
+        return vx < -threshold and abs(vy) < abs(vx) * 0.5
     
     def detect_swipe_right(self, threshold=0.3):
         '''Detect right swipe for next track'''
@@ -65,17 +65,17 @@ class GestureAnalyzer:
     
     def detect_circular_motion(self, min_radius=0.05):
         '''Detect circular motion for tempo control'''
-        if len(self.position_history) < 0:
+        if len(self.position_history) < 8:
             return False, 0
         
-        # Get rescent positionss
+        # Get recent positions
         recent_positions = list(self.position_history)[-8:]
 
         # Calculate if positions form a circle
         center_x = sum(x for x, y, t in recent_positions) / len(recent_positions)
         center_y = sum(y for x, y, t in recent_positions) / len(recent_positions)
 
-        # Check if points are roughlt same distance from the center
+        # Check if points are roughly same distance from the center
         distances = [
             math.sqrt((x - center_x)**2 + (y - center_y)**2)
             for x, y, t in recent_positions
@@ -90,7 +90,7 @@ class GestureAnalyzer:
             prev_x, prev_y, _ = recent_positions[i-1]
             curr_x, curr_y, _ = recent_positions[i]
 
-            # Cross product to determine direction fo rotation
+            # Cross product to determine direction of rotation
             cross_product = (curr_x - center_x) * (prev_y - center_y) - (curr_y - center_y) * (prev_x - center_x)
             direction += 1 if cross_product > 0 else -1
 
@@ -116,30 +116,30 @@ class GestureAnalyzer:
         if len(recent_positions) < 3:
             return False
         
-        # Checking if all recent position are close together
+        # Check if all recent positions are close together
         center_x = sum(x for x, y in recent_positions) / len(recent_positions)
         center_y = sum(y for x, y in recent_positions) / len(recent_positions)
 
         max_distance = max(
-            math.sqrt(x - center_x)**2 + (y - center_y)**2
+            math.sqrt((x - center_x)**2 + (y - center_y)**2)
             for x, y in recent_positions               
         )
 
         return max_distance < max_movement
     
     def can_trigger_gesture(self, gesture_name):
-        '''Check if enough time has passed since last getsure'''
+        '''Check if enough time has passed since last gesture'''
         current_time = time.time()
         if gesture_name in self.last_gesture_time:
             return current_time - self.last_gesture_time[gesture_name] > self.gesture_cooldown
         return True
     
-    def mark_gesture(self, gesture_name):
+    def mark_gesture_triggered(self, gesture_name):
         '''Mark that a gesture was triggered'''
         self.last_gesture_time[gesture_name] = time.time()
 
     def get_gesture_intensity(self):
-        '''get intensity of current gesture based on its velocity'''
+        '''Get intensity of current gesture based on its velocity'''
         vx, vy = self.get_average_velocity()
         speed = math.sqrt(vx**2 + vy**2)
         return min(speed / 2.0, 1.0)
