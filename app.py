@@ -118,7 +118,8 @@ class ConductifyGUI:
             self.playlist = list(files)
             self.current_track_index = 0
             self.music_file = self.playlist[0]
-            if self.player.load(self.music_file):
+            self.player.load_playlist(self.playlist)
+            if self.player.load_track(0):
                 self.update_playlist_display()
                 self.update_track_info()
                 self.get_track_duration()
@@ -126,21 +127,20 @@ class ConductifyGUI:
     
     def toggle_playback(self):
         # Toggle between play and paus
-        if not self.music_file:
-            messagebox.showwarning("Warning", "Please load a music file first")
-            return
-        
         if self.is_playing:
             self.player.pause()
             self.is_playing = False
             self.play_button.config(text="Play")
             self.status_update("Paused")
         else:
-            if self.player.play():
-                self.is_playing = True
-                self.play_button.config(text="Pause")
-                self.last_update_time = time.time()
-                self.status_update(f"Playing: {os.path.basename(self.music_file)}")
+            if self.player.is_paused:
+                self.player.resume()
+            else:
+                self.player.play()
+            self.is_playing = True
+            self.play_button.config(text="Pause")
+            self.last_update_time = time.time()
+            self.status_update(f"Playing: {os.path.basename(self.music_file)}")
     
     def next_track(self):
         # Play next track
@@ -148,11 +148,14 @@ class ConductifyGUI:
             was_playing = self.is_playing
             if self.player.next_track():
                 self.current_track_index = self.player.current_track_index
-                self.music_file = self.player.music_file
+                self.music_file = self.player.playlist[self.current_track_index]
                 self.update_track_info()
                 self.get_track_duration()
                 self.playlist_listbox.selection_clear(0, tk.END)
                 self.playlist_listbox.selection_set(self.current_track_index)
+                self.current_play_time = 0
+                self.last_update_time = time.time()
+                self.progress_var.set(0)
                 if was_playing:
                     self.is_playing = True
                     self.play_button.config(text="Pause")
@@ -168,6 +171,8 @@ class ConductifyGUI:
                 self.update_track_info()
                 self.get_track_duration()
                 self.playlist_listbox.selection_clear(0, tk.END)
+                self.current_play_time = 0
+                self.last_update_time = time.time()
                 self.playlist_listbox.selection_set(self.current_track_index)
                 if was_playing:
                     self.is_playing = True
@@ -182,8 +187,10 @@ class ConductifyGUI:
             if index < len(self.playlist):
                 self.current_track_index = index
                 self.player.current_track_index = index
-                self.music_file = self.playlist[index]
-                if self.player.load(self.music_file):
+                self.player.load_playlist(self.playlist)
+                self.player.current_track_index = index
+                self.music_file = self.music_file = self.playlist[index]
+                if self.player.load_track(index):
                     self.update_track_info()
                     self.get_track_duration()
                     if self.player.play():
@@ -206,9 +213,9 @@ class ConductifyGUI:
                 position_ratio = click_x / bar_width
                 seek_time = position_ratio * self.total_duration
                 self.current_play_time = seek_time
-                if self.is_playing:
-                    self.player.stop()
-                    self.player.play()
+                self.player.seek(seek_time)
+                self.current_play_time = seek_time
+                self.last_update_time = time.time()
                 self.status_update(f"Seek to {self.format_time(seek_time)}")
     
     def toggle_gesture_control(self):

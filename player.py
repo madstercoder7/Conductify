@@ -31,11 +31,11 @@ class MusicPlayer:
         if 0 <= index < len(self.playlist):
             self.current_track_index = index
             track = self.playlist[self.current_track_index]
-            self.music_file = track
             try:
                 pygame.mixer.music.load(track)
                 pygame.mixer.music.set_volume(self.volume)
-                return True  # ✅ Return True on success
+                self.music_file = track
+                return True 
             except pygame.error as e:
                 print(f"Error loading track: {e}")
         return False
@@ -44,12 +44,21 @@ class MusicPlayer:
     def load(self, file_path):
         return self.load_playlist(file_path)
     
+    def seek(self, seconds):
+        if self.playlist:
+            pygame.mixer.music.play(start=seconds)
+    
     def play(self):
         if self.playlist:
-            pygame.mixer.music.play()
+            if not pygame.mixer.music.get_busy() or self.is_paused:
+                track_path = self.playlist[self.current_track_index]
+                if self.music_file != track_path:
+                    pygame.mixer.music.load(track_path)
+                    self.music_file = track_path
+                pygame.mixer.music.set_volume(self.volume)
+                pygame.mixer.music.play()
             self.is_playing = True
             self.is_paused = False
-            return True
 
 
     def pause(self):
@@ -77,18 +86,22 @@ class MusicPlayer:
     def next_track(self):
         # Play the next track in the playlist
         if not self.playlist: # Checks if there is a next song in the playlist
-            return 
+            return False
         self.current_track_index = (self.current_track_index + 1) % len(self.playlist) # Changes the track until no next track exists
         if self.load_track(self.current_track_index): # Checks if next track is loaded 
             self.play()
+            return True
+        return False
 
     def previous_track(self):
         # Play the previous track in the playlist
         if not self.playlist: # Checks if there is a previous song in the playlist
-            return
+            return False
         self.current_track_index = (self.current_track_index - 1 + len(self.playlist)) % len(self.playlist) # Changes the track until no previous track exists
         if self.load_track(self.current_track_index): # Checks if previous track is loaded
             self.play()
+            return True
+        return False
 
     def set_volume(self, volume):
         # Set volume to a value
@@ -117,3 +130,11 @@ class MusicPlayer:
             'index': self.current_track_index, # Track index in playlist
             'total': len(self.playlist) # Playlist length
         }
+
+    def cleanup(self):
+        # Cleanup up resources used by the music player
+        try:
+            pygame.mixer.music.stop()
+            pygame.mixer.quit()
+        except Exception as e:
+            print(f"Cleanup error: {e}")
