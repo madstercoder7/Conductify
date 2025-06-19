@@ -27,6 +27,7 @@ class ConductifyGUI:
         
         # Music State Initializations
         self.playlist = [] # Initializing the playlist 
+        self.shuffle_history = []
         self.current_track_index = 0 # Initializing the current track index
         self.music_file = None # Initializing the music_file which stores the address
         self.is_playing = False # Initializing if track is playing
@@ -156,7 +157,7 @@ class ConductifyGUI:
             was_playing = self.is_playing
 
             if self.shuffle_mode:
-                import random
+                self.shuffle_history.append(self.current_track_index)
                 next_index = random.randint(0, len(self.playlist) - 1)
                 while next_index == self.current_track_index:
                     next_index = random.randint(0, len(self.playlist) - 1)
@@ -190,20 +191,34 @@ class ConductifyGUI:
     def previous_track(self):
         # Play previous track
         if self.playlist and len(self.playlist) > 1: # Checking if playlist exists and has more than 1 track to change to the previous one
-            was_playing = self.is_playing # Checking if track was playing
-            if self.player.previous_track(): # Checking if previous track was requested
-                self.current_track_index = self.player.current_track_index # Updating current track index
-                self.music_file = self.player.music_file # Updating track info to previous one's
-                self.update_track_info() # Updating track inf
-                self.get_track_duration()
-                self.playlist_listbox.selection_clear(0, tk.END)
-                self.current_play_time = 0
-                self.last_update_time = time.time()
-                self.playlist_listbox.selection_set(self.current_track_index)
-                if was_playing:
-                    self.is_playing = True
-                    self.play_button.config(text="Pause")
-                self.status_update(f"Previous: {os.path.basename(self.music_file)}")
+            was_playing = self.is_playing 
+
+            if self.shuffle_mode and self.shuffle_history:
+                prev_index = self.shuffle_history.pop()
+                success = self.player.load_track(prev_index)
+                if not success:
+                    return
+                self.current_track_index = prev_index
+                self.music_file = self.player.playlist[prev_index]
+            else:
+                if not self.player.previous_track():
+                    return
+                self.current_track_index = self.player.current_track_index
+                self.music_file = self.player.playlist[self.current_track_index]
+
+            self.update_track_info() 
+            self.get_track_duration()
+            self.playlist_listbox.selection_clear(0, tk.END)
+            self.current_play_time = 0
+            self.last_update_time = time.time()
+            self.playlist_listbox.selection_set(self.current_track_index)
+            self.progress_var.set(0)
+
+            if was_playing:
+                self.player.play()
+                self.is_playing = True
+                self.play_button.config(text="Pause")
+            self.status_update(f"Previous: {os.path.basename(self.music_file)}")
 
     def toggle_loop_mode(self):
         if self.loop_mode == "Off":
