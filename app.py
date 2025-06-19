@@ -293,7 +293,7 @@ class ConductifyGUI:
             self.gesture_status_label.config(text="Gesture control ACTIVE - Camera starting...", fg="#00ff88")
             
             # Start gesture recognition in a separate thread
-            self.gesture_thread = threading.Thread(target=self.start_gesture_recognition, daemon=True)
+            self.gesture_thread = threading.Thread(target=lambda: start_gesture_loop(self.gesture_status_update, self), daemon=True)
             self.gesture_thread.start()
             
         else:
@@ -314,9 +314,24 @@ class ConductifyGUI:
     def gesture_status_update(self, message):
         # Update gesture status from gesture recognition
         def update():
+            if message == "ESC_PRESSED":
+                self.gesture_active = False
+                self.gesture_button.config(text="Start Gesture Control", bg="#4a4a4a")
+                self.gesture_status_label.config(text="Gesture control inactive", fg="#888888")
+                self.status_update("Gesture control stopped by ESC")
+                return
+            
             self.gesture_status_label.config(text=message, fg="#00ff88")
             self.status_update(message)
-            # Update volume display if volume changed
+            
+            if "Play" in message:
+                self.is_playing = True
+                self.play_button.config(text="Pause")
+                self.last_update_time = time.time()
+            elif "Pause" in message:
+                self.is_playing = False
+                self.play_button.config(text="Play")
+
             current_volume = int(self.player.get_volume() * 100)
             self.volume_var.set(current_volume)
             self.volume_label.config(text=f"{current_volume}%")
