@@ -25,7 +25,6 @@ def count_fingers(hand_landmarks):
 
 def is_fist(fingers): return sum(fingers) == 0
 def is_open_palm(fingers): return sum(fingers) == 5
-def is_three_fingers(fingers): return sum(fingers) == 3
 def is_pinch(landmarks):
     thumb_tip = landmarks.landmark[4]
     index_tip = landmarks.landmark[8]
@@ -83,11 +82,6 @@ def start_gesture_loop(status_callback, gui):
                     elif is_fist(fingers) and is_allowed("pause", cooldown=1.2):
                         status_callback("Gesture: Pause")
                         gui.player.pause()
-
-                    # Shuffle
-                    elif is_three_fingers(fingers) and is_allowed("shuffle", cooldown=1.5):
-                        status_callback("Gesture: Toggle Shuffle")
-                        gui.toggle_shuffle_mode()
 
                     # Volume (pinch-drag)
                     if is_pinch(hand_landmarks):
