@@ -1,116 +1,102 @@
-# Package imports
 import os
 import random
 import threading
 import time
 import tkinter as tk
-from tkinter import filedialog, messagebox
-from tkinter import ttk
+from tkinter import filedialog, messagebox, ttk
 from mutagen.mp3 import MP3
 from mutagen.wave import WAVE
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
-
-# Module Imports
 from player import MusicPlayer
 from gestures import start_gesture_loop
 
-# GUI Class
 class ConductifyGUI:
-    # Class Definition
     def __init__(self, master):
-        self.master = master # Initializing main application window
-        master.title("Conductify - Gesture Music Controller") # Initializing window title
-        master.geometry("800x500") # Initializing window size
-        master.configure(bg="#1e1e1e") # Initalizing the background of the window
-        master.protocol("WM_DELETE_WINDOW", self.on_closing) # Delete window when closed
-        
-        # Music State Initializations
-        self.playlist = [] # Initializing the playlist 
+        self.master = master
+        master.title("Conductify - Gesture Music Controller")
+        master.geometry("820x580")
+        master.configure(bg="#121212")
+        master.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.playlist = []
         self.shuffle_history = []
-        self.current_track_index = 0 # Initializing the current track index
-        self.music_file = None # Initializing the music_file which stores the address
-        self.is_playing = False # Initializing if track is playing
-        self.total_duration = 0 # Initializing total duration of the track
-        self.current_play_time = 0 # Initializing elapsed track time
-        self.last_update_time = time.time() # Initializing the last time track time was updated after seeking
-        self.update_thread_active = True # Initialing if thread is updated
-        self.seeking = False # Initializing if seeking track
+        self.current_track_index = 0
+        self.music_file = None
+        self.is_playing = False
+        self.total_duration = 0
+        self.current_play_time = 0
+        self.last_update_time = time.time()
+        self.update_thread_active = True
+        self.seeking = False
         self.loop_mode = "Off"
         self.shuffle_mode = False
+        self.gesture_active = False
+        self.gesture_thread = None
 
-        # Gesture Control Initializations
-        self.gesture_active = False # Initializing if gesture mode is active
-        self.gesture_thread = None # Initializing thread when gesture mode is active
+        self.player = MusicPlayer()
 
-        # Music Player Instance
-        self.player = MusicPlayer() # Initializing the music player
-
-        # UI components
         self.setup_ui()
-
-        # Start Progress Updater
         self.master.after(1000, self.update_progress)
 
     def setup_ui(self):
-        # UI Layout
+        style = ttk.Style()
+        style.theme_use('default')
+        style.configure("TProgressbar", thickness=10, troughcolor="#2e2e2e", background="#1db954", bordercolor="#2e2e2e", lightcolor="#1db954", darkcolor="#1db954")
 
-        # Track Label
-        self.track_label = tk.Label(self.master, text="No track loaded", bg="#1e1e1e",
-                                    fg="#ffffff", font=("Arial", 14)) # Label which stores song name
-        self.track_label.pack(pady=10) # Packing the label
+        self.track_label = tk.Label(self.master, text="No track loaded", bg="#121212", fg="#ffffff", font=("Segoe UI", 14, "bold"))
+        self.track_label.pack(pady=10)
 
-        # Playlist box
-        self.playlist_listbox = tk.Listbox(self.master, selectbackground="#4a90e2",
-                                           font=("Consolas", 11)) # Playlist box which stores all songs in order
-        self.playlist_listbox.pack(pady=5, fill=tk.X, padx=20) # Packing the list box
-        self.playlist_listbox.bind("<<ListboxSelect>>", self.play_selected_track) # Binding the listbox to play the selected track from the listbox by clicking on the track
+        self.playlist_listbox = tk.Listbox(self.master, bg="#1e1e1e", fg="#ffffff", selectbackground="#1db954",
+                                           font=("Consolas", 11), relief=tk.FLAT, borderwidth=0, highlightthickness=0)
+        self.playlist_listbox.pack(pady=5, fill=tk.X, padx=20)
+        self.playlist_listbox.bind("<<ListboxSelect>>", self.play_selected_track)
 
-        # Playback buttons
-        controls = tk.Frame(self.master, bg="#1e1e1e") # Frame which contains all the playback buttons
-        controls.pack(pady=10) # Packing the frame
+        controls = tk.Frame(self.master, bg="#121212")
+        controls.pack(pady=10)
 
-        tk.Button(controls, text="Previous", command=self.previous_track).grid(row=0, column=0, padx=10) # Button to change to previous song in the playlist
-        self.play_button = tk.Button(controls, text="Play", command=self.toggle_playback) # Button to play or pause the loaded song
-        self.play_button.grid(row=0, column=1, padx=10) # Packing the button
-        tk.Button(controls, text="Next", command=self.next_track).grid(row=0, column=2, padx=10) # Button to change to next song in the playlist
-        tk.Button(controls, text="Load", command=self.load_music).grid(row=0, column=3, padx=10) # Button to load track(s) 
-        self.loop_button = tk.Button(controls, text="Loop: Off", command=self.toggle_loop_mode)
-        self.loop_button.grid(row=0, column=4, padx=10)
-        self.shuffle_button = tk.Button(controls, text="Shuffle: Off", command=self.toggle_shuffle_mode)
-        self.shuffle_button.grid(row=0, column=5, pady=5)
+        btn_cfg = {"font": ("Segoe UI", 10), "bg": "#1f1f1f", "fg": "#ffffff", "activebackground": "#2c2c2c",
+                   "activeforeground": "#1db954", "relief": tk.FLAT, "width": 10}
 
-        # Volume Control
-        volume_frame = tk.Frame(self.master, bg="#1e1e1e") # Frame which contains the volume slider
-        volume_frame.pack(pady=10) # Packing the frame
-        self.volume_var = tk.DoubleVar(value=100) # Max volume set to 100
-        self.volume_label = tk.Label(volume_frame, text="100%", fg="#ffffff", bg="#1e1e1e") # Label which displays the volume
-        self.volume_label.pack(side=tk.LEFT, padx=5) # Packing the label
-        volume_slider = tk.Scale(volume_frame, from_=0, to=100, orient=tk.HORIZONTAL, variable=self.volume_var, 
-                                 command=self.set_volume, bg="#1e1e1e", fg="#ffffff") # Volume slider which can change the volume
-        volume_slider.pack() # Packing the slider
+        tk.Button(controls, text="Previous", command=self.previous_track, **btn_cfg).grid(row=0, column=0, padx=6)
+        self.play_button = tk.Button(controls, text="Play", command=self.toggle_playback, **btn_cfg)
+        self.play_button.grid(row=0, column=1, padx=6)
+        tk.Button(controls, text="Next", command=self.next_track, **btn_cfg).grid(row=0, column=2, padx=6)
+        tk.Button(controls, text="Load", command=self.load_music, **btn_cfg).grid(row=0, column=3, padx=6)
+        self.loop_button = tk.Button(controls, text="Loop: Off", command=self.toggle_loop_mode, **btn_cfg)
+        self.loop_button.grid(row=0, column=4, padx=6)
+        self.shuffle_button = tk.Button(controls, text="Shuffle: Off", command=self.toggle_shuffle_mode, **btn_cfg)
+        self.shuffle_button.grid(row=0, column=5, padx=6)
 
-        # Progress Bar
-        self.progress_var = tk.DoubleVar() 
-        self.progress_bar = ttk.Progressbar(self.master, orient="horizontal", length=700, variable=self.progress_var) 
-        self.progress_bar.pack(pady=5) # Packing the progress bar
-        self.progress_bar.bind("<Button-1>", self.seek_music) # Binding the progress bar to seek_music function
+        volume_frame = tk.Frame(self.master, bg="#121212")
+        volume_frame.pack(pady=10)
+        self.volume_var = tk.DoubleVar(value=100)
+        self.volume_label = tk.Label(volume_frame, text="100%", fg="#ffffff", bg="#121212", font=("Segoe UI", 10))
+        self.volume_label.pack(side=tk.LEFT, padx=5)
+        volume_slider = tk.Scale(volume_frame, from_=0, to=100, orient=tk.HORIZONTAL, variable=self.volume_var,
+                                 command=self.set_volume, bg="#121212", fg="#ffffff", troughcolor="#2e2e2e",
+                                 highlightthickness=0, bd=0, font=("Segoe UI", 9))
+        volume_slider.pack()
 
-        # Time Label
-        self.time_label = tk.Label(self.master, text="00:00 / 00:00", bg="#1e1e1e", fg="#ffffff") # Label which displays the elapsed time of the song
-        self.time_label.pack() # Packing the label
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(self.master, orient="horizontal", length=700, variable=self.progress_var)
+        self.progress_bar.pack(pady=5)
+        self.progress_bar.bind("<Button-1>", self.seek_music)
 
-        # Gesture control
-        self.gesture_button = tk.Button(self.master, text="Start Gesture Control", bg='#4a4a4a', 
-                                        fg="white", command=self.toggle_gesture_control) # Button which starts gesture control
-        self.gesture_button.pack(pady=10) # Packing the button
+        self.time_label = tk.Label(self.master, text="00:00 / 00:00", bg="#121212", fg="#ffffff", font=("Segoe UI", 9))
+        self.time_label.pack()
 
-        self.gesture_status_label = tk.Label(self.master, text="Gesture control inactive", fg="#888888", bg="#1e1e1e") # Label which displays the status of gestures
-        self.gesture_status_label.pack() # Packing the label
+        self.gesture_button = tk.Button(self.master, text="Start Gesture Control", bg="#1f1f1f", fg="white",
+                                        activebackground="#2c2c2c", activeforeground="#1db954",
+                                        command=self.toggle_gesture_control, font=("Segoe UI", 10), relief=tk.FLAT)
+        self.gesture_button.pack(pady=10)
 
-        # Status bar
-        self.status_label = tk.Label(self.master, text="", bg="#1e1e1e", fg="#888888", anchor="w") # Label whcih gives the status of the application
-        self.status_label.pack(fill=tk.X, side=tk.BOTTOM) # Packing the label
+        self.gesture_status_label = tk.Label(self.master, text="Gesture control inactive", fg="#888888",
+                                             bg="#121212", font=("Segoe UI", 9, "italic"))
+        self.gesture_status_label.pack()
+
+        self.status_label = tk.Label(self.master, text="", bg="#121212", fg="#888888", anchor="w", font=("Segoe UI", 9))
+        self.status_label.pack(fill=tk.X, side=tk.BOTTOM)
 
     def load_music(self):
         # Responsible for the loading logic of the app
@@ -259,6 +245,7 @@ class ConductifyGUI:
                     if self.player.play():
                         self.is_playing = True
                         self.play_button.config(text="Pause")
+                        self.update_progress()
                         self.status_update(f"Playing: {os.path.basename(self.music_file)}")
     
     def set_volume(self, volume):
@@ -447,10 +434,8 @@ class ConductifyGUI:
         self.master.destroy()
 
 def main():
-    # Main function to run the application
     root = tk.Tk()
     app = ConductifyGUI(root)
-    
     try:
         root.mainloop()
     except KeyboardInterrupt:
