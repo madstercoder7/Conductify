@@ -2,6 +2,10 @@
 
 Control your music with hand gestures using OpenCV and MediaPipe.
 
+## Load music
+- Use mp3 files which you already have avaialable
+- Use this website https://spotdownloader.com/ to download your playlists from your spotify account 
+
 ## Features
 | Gesture          | Action               |
 |------------------|----------------------|
