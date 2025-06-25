@@ -3,10 +3,12 @@
 Control your music with hand gestures using OpenCV and MediaPipe.
 
 ## Features
-- Open palm = Play
-- Fist = Pause
-- Pinch and drag = Volume control
-- Swipe using index finger towards right / left = Next / Previous Track
+| Gesture          | Action               |
+|------------------|----------------------|
+| 🖐️ Open Palm     | Play Music           |
+| ✊ Fist           | Pause Music          |
+| 🤏 Pinch + Drag  | Adjust Volume        |
+| 👉👈 Swipe (Index Finger) | Next / Previous Track |
 
 ## Installation
 
@@ -19,7 +21,7 @@ cd conductify
 2. **Create a virtual environment**
 ```bash
 python -m venv venv
-vens\Scripts\activate
+venv\Scripts\activate
 ```
 
 3. **Install dependencies**
@@ -33,5 +35,8 @@ python app.py
 ```
 
 ## Improvements coming soon
-- Better gesture recognition
+- Better gesture recognition using custom gesture models
 - Other music player features 
+- Multi platform Compatibility
+- Spotify integration for premium users
+- Custom gestures users can design as per their convenience

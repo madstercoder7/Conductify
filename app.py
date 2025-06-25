@@ -107,35 +107,35 @@ class ConductifyGUI:
                 ("OGG Files", "*.ogg"),
                 ("M4A Files", "*.m4a")
             ]
-        ) # Only allowing music files to be loaded to the application
+        ) 
 
-        if files: # Checking if any files exist
-            self.playlist = list(files) # Creating a list of those files
+        if files:
+            self.playlist = list(files) 
             self.current_track_index = 0 
-            self.music_file = self.playlist[0] # Setting the music file to be played to the first one in the playlist
-            self.player.load_playlist(self.playlist) # Loading the playlist to the app
-            if self.player.load_track(0): # Checking if 1st track is loaded
-                self.update_playlist_display() # Updating the playlist display to focus on the track playing
-                self.update_track_info() # Updating track info like name and duration
-                self.get_track_duration() # Getting the track duration
-                self.status_update("Loaded track/tracks.") # Updating status
+            self.music_file = self.playlist[0]
+            self.player.load_playlist(self.playlist)
+            if self.player.load_track(0): 
+                self.update_playlist_display()
+                self.update_track_info() 
+                self.get_track_duration() 
+                self.status_update("Loaded track/tracks.") 
     
     def toggle_playback(self):
         # Toggle between play and pause
-        if self.is_playing: # Chekcing if track is playing
-            self.player.pause() # Pausing the track
+        if self.is_playing: 
+            self.player.pause() 
             self.is_playing = False 
-            self.play_button.config(text="Play") # Changing text of the button
-            self.status_update("Paused") # Updating status
+            self.play_button.config(text="Play") 
+            self.status_update("Paused") 
         else:
-            if self.player.is_paused: # Checking if track is paused
-                self.player.resume() # Resuming the track
+            if self.player.is_paused: 
+                self.player.resume() 
             else:
-                self.player.play() # Playing the track if not playing or not paused
+                self.player.play() 
             self.is_playing = True
-            self.play_button.config(text="Pause") # Changing text of the button
-            self.last_update_time = time.time() # Changing last update time
-            self.status_update(f"Playing: {os.path.basename(self.music_file)}") # Updating status
+            self.play_button.config(text="Pause")
+            self.last_update_time = time.time() 
+            self.status_update(f"Playing: {os.path.basename(self.music_file)}") 
     
     def next_track(self):
         # Play next track
@@ -176,7 +176,7 @@ class ConductifyGUI:
     
     def previous_track(self):
         # Play previous track
-        if self.playlist and len(self.playlist) > 1: # Checking if playlist exists and has more than 1 track to change to the previous one
+        if self.playlist and len(self.playlist) > 1: 
             was_playing = self.is_playing 
 
             if self.shuffle_mode and self.shuffle_history:
@@ -388,7 +388,6 @@ class ConductifyGUI:
                     elif self.loop_mode == "All":
                         self.next_track()
                     else:
-                        # Loop off
                         if len(self.playlist) > 1 and self.current_track_index < len(self.playlist) - 1:
                             self.next_track()
                         else:
@@ -398,18 +397,15 @@ class ConductifyGUI:
                             self.status_update("Playback finished")
             
             self.last_update_time = current_time
-            
-            # Update progress bar
+
             if self.total_duration > 0:
                 progress = (self.current_play_time / self.total_duration) * 100
                 self.progress_var.set(min(progress, 100))
             
-            # Update time display
             current_str = self.format_time(self.current_play_time)
             total_str = self.format_time(self.total_duration)
             self.time_label.config(text=f"{current_str} / {total_str}")
         
-        # Schedule next update
         self.master.after(1000, self.update_progress)
     
     def format_time(self, seconds):
